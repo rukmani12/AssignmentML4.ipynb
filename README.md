@@ -1,124 +1,71 @@
-## Description:
-## ============
+Getting and Cleaning Data Project
+==============
+This is the GitHub Repository for the 
+[Getting and Cleaning Data](https://class.coursera.org/getdata-007) Course Project.
+## Project Description ##
+The purpose of this project is to demonstrate the ability to collect, work with, and clean a 
+data set. 
+The goal is to prepare tidy data that can be used for later analysis.  
+In more details, the following steps are required to complete the assignment:
+    1) a tidy data set as described below;
+    2) a link to a Github repository with your script for performing the analysis; 
+    3) a Code book that describes the variables, the data, and any transformations performed 
+    to clean up the data called.
+### Data Description:
+The data considered for the Project represent data collected from the 
+accelerometers from the Samsung Galaxy S smartphone.
+A full description is available at the web site where the data was obtained:
+[http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones]().
+The whole data package can be downloaded at the following link:
+[https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip]()
 
-# This script performs the following Analysis steps:
-# - Read the Dataset
-# - Merges the training and the test sets to create one single data set.
-# - Extracts only the measurements on the mean and standard deviation for each measurement. 
-# - Uses descriptive activity names to name the activities in the data set
-# - Appropriately labels the data set with descriptive variable names. 
-# - Creates a second, independent tidy data set with the average of each variable 
-#   for each activity and each subject.
+## Data Analysis ##
 
-# NOTES: 
-# Coding style follows the *Google's R Style guide* reported in:
-# https://google-styleguide.googlecode.com/svn/trunk/Rguide.xml
+To perform the data analysis it is required to perform the following **4 steps**:
+To perform the data analysis it is required to perform the following **steps**:
 
-# ---------------
-# Analysis steps:
-# ---------------
+* **Clone** this repository into a folder on the local machine:
+    `git clone https://github.com/leriomaggio/getting-and-cleaning-data.git` 
 
-source("./utility.R")  # now `get.filepath` function is in the namespace
+*  **Set the Working Directory** to the folder where the Git repository has been cloned:
 
-# 0. Get Current file directory
+        setwd("<CLONE REPO FOLDER PATH>")
 
-current.wd <- get.filepath()
-folder.dataset <- file.path(current.wd, "dataset", "UCI HAR Dataset")
-folder.train <- file.path(folder.dataset, "train")
-folder.test <- file.path(folder.dataset, "test")
+*  **Download and Unzip** the data package by clicking at the following url:
+    [https://d396qusza40orc.cloudfront.net/getdata%2Fprojectfiles%2FUCI%20HAR%20Dataset.zip]()
+    or by running the following commands into the **R Terminal Console**:
+    or by sourcing the `downloadata.R` w/ the command:
 
+        source("./downloadata.R")
+        download.data()
 
-# 1. Merge training and test sets to create one single data set.
-# --------------------------------------------------------------
+    This R script will download the data package, and it will store the 
+    downloaded package into a `dataset.zip` file located into the `datasets`
+    folder.
 
-message("Performing Step 1: Merging Datasets")
+* **Source** the `run_analysis.R` script:
+* **Source** the `run_analysis.R` script: 
 
-# 1.1 Merge labeled data (i.e., X)
-xTrain <- read.table(file.path(folder.train, "X_train.txt"))
-xTest <- read.table(file.path(folder.test, "X_test.txt"))
-X <- rbind(xTrain, xTest)
+        setwd("<CLONE REPO FOLDER PATH>")
+        source("run_analysis.R")
 
-# 1.2 Merge Subject data
-subTrain <- read.table(file.path(folder.train, "subject_train.txt"))
-subTest <- read.table(file.path(folder.test, "subject_test.txt"))
-subjects <- rbind(subTrain, subTest)
-
-# 1.3 Merge Labels
-yTrain <- read.table(file.path(folder.train, "y_train.txt"))
-yTest <- read.table(file.path(folder.test, "y_test.txt"))
-y <- rbind(yTrain, yTest)
-
-# --------------------------------------------------------------------
-# 2. Extracts the measurements of the mean and the standard deviation 
-#    for each measurement.
-# --------------------------------------------------------------------
-
-message("Performing Step 2: Get Mean and Std of Measurements")
-
-# Read the features
-features <- read.table(file.path(folder.dataset, "features.txt"))
-
-# Grep Mean and Std features only
-features.selected <- grep("-mean\\(\\)|-std\\(\\)", features[, 2])
-X <- X[, features.selected]  # subset X by selecting only mean and std
-names(X) <- features[features.selected, 2]
-names(X) <- gsub("\\(|\\)", "", names(X))  # Remove brackets
-names(X) <- gsub("\\-", " ", names(X))  # Replace dashes w/ blank spaces
-
-# -------------------------------------------------------------------------
-# 3. Uses descriptive activity names to name the activities in the dataset
-# -------------------------------------------------------------------------
-
-message("Performing Step 3: Rename activities in the dataset")
-
-# Read Activities
-activities <- read.table(file.path(folder.dataset, "activity_labels.txt"))
-
-y[,1] <- activities[y[,1], 2]
-names(y) <- "activity"  # set names of labels (i.e., y) to 'activity'
-
-# ---------------------------------------------------------------------
-# 4. Appropriately labels the data set with descriptive activity names.
-# ---------------------------------------------------------------------
-
-message("Performing Step 4: Re-label the dataset w/ descriptive names")
-
-names(subjects) <- "subject"
-data.cleaned <- cbind(subjects, y, X)
-write.table(data.cleaned, 
-            file.path(current.wd, "merged_and_cleaned_dataset.txt"))
-
-message("merged_and_cleaned_dataset.txt file created!")
-
-# --------------------------------------------------------------------
-# 5. Creates an independent tidy data set with the average of 
-#    each variable for each activity and each subject.
-# --------------------------------------------------------------------
-
-message("Performing Step 5: Create the Tidy dataset")
-
-subjects.unique <- unique(subjects)[,1]
-subjects.len <-  length(subjects.unique)
-activities.len <- length(activities[,1])
-columns <- ncol(data.cleaned)
-
-data.tidy <- data.cleaned[1:(subjects.len * activities.len), ]
-row <- 1
-for (s in 1:subjects.len) {
-	for (a in 1:activities.len) {
-	  data.tidy[row, 1] <- subjects.unique[s]
-	  data.tidy[row, 2] <- activities[a, 2]
-		subset <- data.cleaned[data.cleaned$subject==s & 
-                        data.cleaned$activity==activities[a, 2], ]
-		data.tidy[row, 3:columns] <- colMeans(subset[, 3:columns])
-		row <- row+1
-	}
-}
-
-# Write the Tidy Dataset to file
-write.table(data.tidy, 
-            file.path(current.wd, "tidy_dataset_with_average_values.txt"), 
-            row.names = FALSE)
-
-message("tidy_dataset_with_average_values.txt file created!")
-© 2020 GitHub, Inc.
+  Sourcing the `run_analysis.R` script will perform the actual analysis. In particular:
+     - Read the Dataset
+     - Merges the training and the test sets to create one single data set.
+     - Extracts only the measurements on the mean and standard deviation for each measurement. 
+     - Uses descriptive activity names to name the activities in the data set
+     - Appropriately labels the data set with descriptive variable names. 
+     - Creates a second, independent tidy data set with the average of each variable 
+         for each activity and each subject.
+  After performing the analysis, the following files will be created:
+    - `merged_and_cleaned_dataset.txt` (*corresponding to a `10299x68` data frame*)
+    - `tidy_dataset_with_average_values.txt` (*corresponding to a `180x68` data frame*)
+    
+* **Use data**: to read and use the data it is necessary to run the following command:
+        data <- read.table("tidy_dataset_with_average_values.txt")
+  It will correspond to a `180x68` data frame w/ 30 subjects and 6 activities
+  (i.e., 30 x 6 = 180 rows)
+## Final Notes:
+The provided R script makes assumptions on the location of files to process (dataset).
+However, no assumptions is made on the numbers of rows and columns of the data frame
+to process during the analysis steps.
